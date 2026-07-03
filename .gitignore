@@ -1,0 +1,18 @@
+# 依賴套件——可用 npm install 重新產生，不需進 git（而且很大）
+node_modules/
+
+# 環境變數——通常放密碼、API key、資料庫連線字串，機密，絕不進 git
+.env
+.env.local
+
+# 執行時產生的 log
+*.log
+npm-debug.log*
+
+# 作業系統自動產生的垃圾檔
+.DS_Store
+Thumbs.db
+
+# 編輯器設定——每個人的 VS Code 設定不同，不該共用
+.vscode/
+.idea/
