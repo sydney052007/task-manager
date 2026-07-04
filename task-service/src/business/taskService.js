@@ -4,7 +4,10 @@ function getTasks() {
   return getAllTasks();
 }
 
-function addTask(content, deadline) {
+function addTask(userId, content, deadline) {
+  if (!userId) {
+    throw new Error('userId 是必填欄位');
+  }
   if (!content) {
     throw new Error('content 是必填欄位');
   }
@@ -21,6 +24,7 @@ function addTask(content, deadline) {
 
   const task = {
     id: Date.now().toString(),
+    userId,
     content,
     deadline,
     createDate: createDate.toISOString(),
@@ -38,4 +42,17 @@ function completeTask(id) {
   return result;
 }
 
-module.exports = { getTasks, addTask, completeTask };
+function getUpcomingTasks() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // 將時間設為今天的開始
+
+  const threeDaysLater = new Date(today);
+  threeDaysLater.setDate(today.getDate() + 3); // 設定為三天後
+
+  return getAllTasks().filter(task => {
+    const deadline = new Date(task.deadline);
+    return deadline >= today && deadline <= threeDaysLater;
+  });
+}
+
+module.exports = { getTasks, addTask, completeTask, getUpcomingTasks };
