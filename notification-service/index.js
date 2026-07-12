@@ -1,5 +1,12 @@
 const express = require('express');
 const notificationRoutes = require('./src/presentation/notificationRoutes');
+const cron = require('node-cron');
+require('dotenv').config();
+const { checkAndNotify } = require('./src/business/notificationService');
+
+cron.schedule('0 0 7 * * *', () => {
+  checkAndNotify();
+});
 
 const app = express();
 app.use(express.json());
