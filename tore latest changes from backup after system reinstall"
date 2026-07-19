@@ -1,740 +1,0 @@
-[1mdiff --git a/notification-service/index.js b/notification-service/index.js[m
-[1mindex 5b37aeb..faeca63 100644[m
-[1m--- a/notification-service/index.js[m
-[1m+++ b/notification-service/index.js[m
-[36m@@ -1,18 +1,18 @@[m
-[31m-const express = require('express');[m
-[31m-const notificationRoutes = require('./src/presentation/notificationRoutes');[m
-[31m-const cron = require('node-cron');[m
-[31m-require('dotenv').config();[m
-[31m-const { checkAndNotify } = require('./src/business/notificationService');[m
-[31m-[m
-[31m-cron.schedule('0 0 7 * * *', () => {[m
-[31m-  checkAndNotify();[m
-[31m-});[m
-[31m-[m
-[31m-const app = express();[m
-[31m-app.use(express.json());[m
-[31m-app.use(notificationRoutes);[m
-[31m-[m
-[31m-const PORT = 3003;[m
-[31m-app.listen(PORT, () => {[m
-[31m-  console.log(`Server running on http://localhost:${PORT}`);[m
-[32m+[m[32mconst express = require('express');[m[41m[m
-[32m+[m[32mconst notificationRoutes = require('./src/presentation/notificationRoutes');[m[41m[m
-[32m+[m[32mconst cron = require('node-cron');[m[41m[m
-[32m+[m[32mrequire('dotenv').config();[m[41m[m
-[32m+[m[32mconst { checkAndNotify } = require('./src/business/notificationService');[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32mcron.schedule('0 0 7 * * *', () => {[m[41m[m
-[32m+[m[32m  checkAndNotify();[m[41m[m
-[32m+[m[32m});[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32mconst app = express();[m[41m[m
-[32m+[m[32mapp.use(express.json());[m[41m[m
-[32m+[m[32mapp.use(notificationRoutes);[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32mconst PORT = 3003;[m[41m[m
-[32m+[m[32mapp.listen(PORT, () => {[m[41m[m
-[32m+[m[32m  console.log(`Server running on http://localhost:${PORT}`);[m[41m[m
- });[m
-\ No newline at end of file[m
-[1mdiff --git a/notification-service/src/business/notificationService.js b/notification-service/src/business/notificationService.js[m
-[1mindex 0e98cc5..0b2cd08 100644[m
-[1m--- a/notification-service/src/business/notificationService.js[m
-[1m+++ b/notification-service/src/business/notificationService.js[m
-[36m@@ -1,84 +1,84 @@[m
-[31m-const crypto = require('crypto');[m
-[31m-const { createRecord } = require('../data/notificationRepository');[m
-[31m-const nodemailer = require('nodemailer');[m
-[31m-require('dotenv').config();[m
-[31m-[m
-[31m-async function handleNotify(userId, taskId) {[m
-[31m-    const response = await fetch(`http://localhost:3002/users/${userId}`);[m
-[31m-[m
-[31m-    if (!response.ok) {[m
-[31m-        throw new Error('找不到這個 user');[m
-[31m-    }[m
-[31m-[m
-[31m-    const user = await response.json();[m
-[31m-[m
-[31m-    const record = {[m
-[31m-        id: crypto.randomUUID(),[m
-[31m-        userId,[m
-[31m-        taskId,[m
-[31m-        email: user.email,[m
-[31m-        sentAt: new Date().toISOString(),[m
-[31m-    };[m
-[31m-[m
-[31m-    createRecord(record);[m
-[31m-    console.log(`通知已發送給 ${user.email}`);[m
-[31m-[m
-[31m-    return record;[m
-[31m-}[m
-[31m-[m
-[31m-const transporter = nodemailer.createTransport({[m
-[31m-    service: 'gmail',[m
-[31m-    auth: {[m
-[31m-        user: process.env.EMAIL_USER,[m
-[31m-        pass: process.env.EMAIL_PASS,[m
-[31m-    },[m
-[31m-});[m
-[31m-[m
-[31m-async function checkAndNotify(){[m
-[31m-    try {[m
-[31m-        let upcomingTasks = null;[m
-[31m-        for (let i = 0; i < 3; i++) {[m
-[31m-            try {[m
-[31m-                const response = await fetch('http://localhost:3001/tasks/upcoming');[m
-[31m-                if (!response.ok) {[m
-[31m-                    throw new Error('無法取得即將到期的任務');[m
-[31m-                }[m
-[31m-                upcomingTasks = await response.json();[m
-[31m-                break; // 成功取得資料，跳出迴圈[m
-[31m-            } catch (error) {[m
-[31m-                console.error(`第 ${i + 1} 次嘗試失敗:`, error);[m
-[31m-                if (i === 2) {[m
-[31m-                    throw new Error('連續三次嘗試後仍無法取得即將到期的任務');[m
-[31m-                }[m
-[31m-            }[m
-[31m-        }[m
-[31m-        [m
-[31m-        const grouped = {};[m
-[31m-        for (const task of upcomingTasks) {[m
-[31m-            if (!grouped[task.userId]) {[m
-[31m-                grouped[task.userId] = [];[m
-[31m-            }[m
-[31m-            grouped[task.userId].push(task);[m
-[31m-        }[m
-[31m-        [m
-[31m-        for(const [userId, tasks] of Object.entries(grouped)) {[m
-[31m-            try {[m
-[31m-                const email = (await (await fetch(`http://localhost:3002/users/${userId}`)).json()).email;[m
-[31m-                const taskList = tasks.map(task => `- ${task.content} (截止日期: ${task.deadline})`).join('\n');[m
-[31m-                const mailOptions = {[m
-[31m-                    from: process.env.EMAIL_USER,[m
-[31m-                    to: email,[m
-[31m-                    subject: '即將到期的任務提醒',[m
-[31m-                    text: `您有以下任務即將到期:\n\n${taskList}`,[m
-[31m-                };[m
-[31m-                await transporter.sendMail(mailOptions);[m
-[31m-            } catch (error) {[m
-[31m-                console.error(`處理 userId ${userId} 的通知時發生錯誤:`, error);[m
-[31m-            }[m
-[31m-        }[m
-[31m-    } catch (error) {[m
-[31m-        console.error('檢查和通知時發生錯誤:', error);[m
-[31m-    }[m
-[31m-}[m
-[31m-[m
-[32m+[m[32mconst crypto = require('crypto');[m[41m[m
-[32m+[m[32mconst { createRecord } = require('../data/notificationRepository');[m[41m[m
-[32m+[m[32mconst nodemailer = require('nodemailer');[m[41m[m
-[32m+[m[32mrequire('dotenv').config();[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32masync function handleNotify(userId, taskId) {[m[41m[m
-[32m+[m[32m    const response = await fetch(`http://localhost:3002/users/${userId}`);[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32m    if (!response.ok) {[m[41m[m
-[32m+[m[32m        throw new Error('找不到這個 user');[m[41m[m
-[32m+[m[32m    }[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32m    const user = await response.json();[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32m    const record = {[m[41m[m
-[32m+[m[32m        id: crypto.randomUUID(),[m[41m[m
-[32m+[m[32m        userId,[m[41m[m
-[32m+[m[32m        taskId,[m[41m[m
-[32m+[m[32m        email: user.email,[m[41m[m
-[32m+[m[32m        sentAt: new Date().toISOString(),[m[41m[m
-[32m+[m[32m    };[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32m    createRecord(record);[m[41m[m
-[32m+[m[32m    console.log(`通知已發送給 ${user.email}`);[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32m    return record;[m[41m[m
-[32m+[m[32m}[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32mconst transporter = nodemailer.createTransport({[m[41m[m
-[32m+[m[32m    service: 'gmail',[m[41m[m
-[32m+[m[32m    auth: {[m[41m[m
-[32m+[m[32m        user: process.env.EMAIL_USER,[m[41m[m
-[32m+[m[32m        pass: process.env.EMAIL_PASS,[m[41m[m
-[32m+[m[32m    },[m[41m[m
-[32m+[m[32m});[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32masync function checkAndNotify(){[m[41m[m
-[32m+[m[32m    try {[m[41m[m
-[32m+[m[32m        let upcomingTasks = null;[m[41m[m
-[32m+[m[32m        for (let i = 0; i < 3; i++) {[m[41m[m
-[32m+[m[32m            try {[m[41m[m
-[32m+[m[32m                const response = await fetch('http://localhost:3001/tasks/upcoming');[m[41m[m
-[32m+[m[32m                if (!response.ok) {[m[41m[m
-[32m+[m[32m                    throw new Error('無法取得即將到期的任務');[m[41m[m
-[32m+[m[32m                }[m[41m[m
-[32m+[m[32m                upcomingTasks = await response.json();[m[41m[m
-[32m+[m[32m                break; // 成功取得資料，跳出迴圈[m[41m[m
-[32m+[m[32m            } catch (error) {[m[41m[m
-[32m+[m[32m                console.error(`第 ${i + 1} 次嘗試失敗:`, error);[m[41m[m
-[32m+[m[32m                if (i === 2) {[m[41m[m
-[32m+[m[32m                    throw new Error('連續三次嘗試後仍無法取得即將到期的任務');[m[41m[m
-[32m+[m[32m                }[m[41m[m
-[32m+[m[32m            }[m[41m[m
-[32m+[m[32m        }[m[41m[m
-[32m+[m[41m        [m
-[32m+[m[32m        const grouped = {};[m[41m[m
-[32m+[m[32m        for (const task of upcomingTasks) {[m[41m[m
-[32m+[m[32m            if (!grouped[task.userId]) {[m[41m[m
-[32m+[m[32m                grouped[task.userId] = [];[m[41m[m
-[32m+[m[32m            }[m[41m[m
-[32m+[m[32m            grouped[task.userId].push(task);[m[41m[m
-[32m+[m[32m        }[m[41m[m
-[32m+[m[41m        [m
-[32m+[m[32m        for(const [userId, tasks] of Object.entries(grouped)) {[m[41m[m
-[32m+[m[32m            try {[m[41m[m
-[32m+[m[32m                const email = (await (await fetch(`http://localhost:3002/users/${userId}`)).json()).email;[m[41m[m
-[32m+[m[32m                const taskList = tasks.map(task => `- ${task.content} (截止日期: ${task.deadline})`).join('\n');[m[41m[m
-[32m+[m[32m                const mailOptions = {[m[41m[m
-[32m+[m[32m                    from: process.env.EMAIL_USER,[m[41m[m
-[32m+[m[32m                    to: email,[m[41m[m
-[32m+[m[32m                    subject: '即將到期的任務提醒',[m[41m[m
-[32m+[m[32m                    text: `您有以下任務即將到期:\n\n${taskList}`,[m[41m[m
-[32m+[m[32m                };[m[41m[m
-[32m+[m[32m                await transporter.sendMail(mailOptions);[m[41m[m
-[32m+[m[32m            } catch (error) {[m[41m[m
-[32m+[m[32m                console.error(`處理 userId ${userId} 的通知時發生錯誤:`, error);[m[41m[m
-[32m+[m[32m            }[m[41m[m
-[32m+[m[32m        }[m[41m[m
-[32m+[m[32m    } catch (error) {[m[41m[m
-[32m+[m[32m        console.error('檢查和通知時發生錯誤:', error);[m[41m[m
-[32m+[m[32m    }[m[41m[m
-[32m+[m[32m}[m[41m[m
-[32m+[m[41m[m
- module.exports = { handleNotify, checkAndNotify };[m
-\ No newline at end of file[m
-[1mdiff --git a/notification-service/src/data/notificationRepository.js b/notification-service/src/data/notificationRepository.js[m
-[1mindex a9a68e6..2211553 100644[m
-[1m--- a/notification-service/src/data/notificationRepository.js[m
-[1m+++ b/notification-service/src/data/notificationRepository.js[m
-[36m@@ -1,8 +1,8 @@[m
-[31m-const records = [];[m
-[31m-[m
-[31m-function createRecord(record) {[m
-[31m-  records.push(record);[m
-[31m-  return record;[m
-[31m-}[m
-[31m-[m
-[32m+[m[32mconst records = [];[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32mfunction createRecord(record) {[m[41m[m
-[32m+[m[32m  records.push(record);[m[41m[m
-[32m+[m[32m  return record;[m[41m[m
-[32m+[m[32m}[m[41m[m
-[32m+[m[41m[m
- module.exports = { createRecord };[m
-\ No newline at end of file[m
-[1mdiff --git a/notification-service/src/presentation/notificationRoutes.js b/notification-service/src/presentation/notificationRoutes.js[m
-[1mindex ca57ed2..c0beace 100644[m
-[1m--- a/notification-service/src/presentation/notificationRoutes.js[m
-[1m+++ b/notification-service/src/presentation/notificationRoutes.js[m
-[36m@@ -1,24 +1,24 @@[m
-[31m-const express = require('express');[m
-[31m-const router = express.Router();[m
-[31m-const { handleNotify, checkAndNotify } = require('../business/notificationService');[m
-[31m-[m
-[31m-router.post('/notify', async (req, res) => {[m
-[31m-    try {[m
-[31m-        const { userId, taskId } = req.body;[m
-[31m-        const record = await handleNotify(userId, taskId);[m
-[31m-        res.status(201).json(record);[m
-[31m-    } catch (err) {[m
-[31m-        res.status(400).json({ error: err.message });[m
-[31m-    }[m
-[31m-});[m
-[31m-[m
-[31m-router.post('/test-notify', async (req, res) => {[m
-[31m-    try {[m
-[31m-        await checkAndNotify();[m
-[31m-        res.status(200).json({ message: '通知檢查已觸發' });[m
-[31m-    } catch (err) {[m
-[31m-        res.status(400).json({ error: err.message });[m
-[31m-    }[m
-[31m-});[m
-[31m-[m
-[32m+[m[32mconst express = require('express');[m[41m[m
-[32m+[m[32mconst router = express.Router();[m[41m[m
-[32m+[m[32mconst { handleNotify, checkAndNotify } = require('../business/notificationService');[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32mrouter.post('/notify', async (req, res) => {[m[41m[m
-[32m+[m[32m    try {[m[41m[m
-[32m+[m[32m        const { userId, taskId } = req.body;[m[41m[m
-[32m+[m[32m        const record = await handleNotify(userId, taskId);[m[41m[m
-[32m+[m[32m        res.status(201).json(record);[m[41m[m
-[32m+[m[32m    } catch (err) {[m[41m[m
-[32m+[m[32m        res.status(400).json({ error: err.message });[m[41m[m
-[32m+[m[32m    }[m[41m[m
-[32m+[m[32m});[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32mrouter.post('/test-notify', async (req, res) => {[m[41m[m
-[32m+[m[32m    try {[m[41m[m
-[32m+[m[32m        await checkAndNotify();[m[41m[m
-[32m+[m[32m        res.status(200).json({ message: '通知檢查已觸發' });[m[41m[m
-[32m+[m[32m    } catch (err) {[m[41m[m
-[32m+[m[32m        res.status(400).json({ error: err.message });[m[41m[m
-[32m+[m[32m    }[m[41m[m
-[32m+[m[32m});[m[41m[m
-[32m+[m[41m[m
- module.exports = router;[m
-\ No newline at end of file[m
-[1mdiff --git a/task-service/index.js b/task-service/index.js[m
-[1mindex fdd4ff5..b556e5c 100644[m
-[1m--- a/task-service/index.js[m
-[1m+++ b/task-service/index.js[m
-[36m@@ -1,11 +1,11 @@[m
-[31m-const express = require('express');[m
-[31m-const taskRoutes = require('./src/presentation/taskRoutes');[m
-[31m-[m
-[31m-const app = express();[m
-[31m-app.use(express.json());[m
-[31m-app.use(taskRoutes);[m
-[31m-[m
-[31m-const PORT = 3001;[m
-[31m-app.listen(PORT, () => {[m
-[31m-  console.log(`Server running on http://localhost:${PORT}`);[m
-[32m+[m[32mconst express = require('express');[m[41m[m
-[32m+[m[32mconst taskRoutes = require('./src/presentation/taskRoutes');[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32mconst app = express();[m[41m[m
-[32m+[m[32mapp.use(express.json());[m[41m[m
-[32m+[m[32mapp.use(taskRoutes);[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32mconst PORT = 3001;[m[41m[m
-[32m+[m[32mapp.listen(PORT, () => {[m[41m[m
-[32m+[m[32m  console.log(`Server running on http://localhost:${PORT}`);[m[41m[m
- });[m
-\ No newline at end of file[m
-[1mdiff --git a/task-service/src/business/taskService.js b/task-service/src/business/taskService.js[m
-[1mindex 8609dab..b9bea22 100644[m
-[1m--- a/task-service/src/business/taskService.js[m
-[1m+++ b/task-service/src/business/taskService.js[m
-[36m@@ -1,58 +1,58 @@[m
-[31m-const { getAllTasks, createTask, updateTask } = require('../data/taskRepository');[m
-[31m-[m
-[31m-function getTasks() {[m
-[31m-  return getAllTasks();[m
-[31m-}[m
-[31m-[m
-[31m-function addTask(userId, content, deadline) {[m
-[31m-  if (!userId) {[m
-[31m-    throw new Error('userId 是必填欄位');[m
-[31m-  }[m
-[31m-  if (!content) {[m
-[31m-    throw new Error('content 是必填欄位');[m
-[31m-  }[m
-[31m-  if (!deadline) {[m
-[31m-    throw new Error('deadline 是必填欄位');[m
-[31m-  }[m
-[31m-[m
-[31m-  const createDate = new Date();[m
-[31m-  const deadlineDate = new Date(deadline);[m
-[31m-[m
-[31m-  if (deadlineDate <= createDate) {[m
-[31m-    throw new Error('deadline 必須在建立時間之後');[m
-[31m-  }[m
-[31m-[m
-[31m-  const task = {[m
-[31m-    id: Date.now().toString(),[m
-[31m-    userId,[m
-[31m-    content,[m
-[31m-    deadline,[m
-[31m-    createDate: createDate.toISOString(),[m
-[31m-    done: false,[m
-[31m-  };[m
-[31m-[m
-[31m-  return createTask(task);[m
-[31m-}[m
-[31m-[m
-[31m-function completeTask(id) {[m
-[31m-  const result = updateTask(id, { done: true });[m
-[31m-  if (!result) {[m
-[31m-    throw new Error('找不到這個 task');[m
-[31m-  }[m
-[31m-  return result;[m
-[31m-}[m
-[31m-[m
-[31m-function getUpcomingTasks() {[m
-[31m-  const today = new Date();[m
-[31m-  today.setHours(0, 0, 0, 0); // 將時間設為今天的開始[m
-[31m-[m
-[31m-  const threeDaysLater = new Date(today);[m
-[31m-  threeDaysLater.setDate(today.getDate() + 3); // 設定為三天後[m
-[31m-[m
-[31m-  return getAllTasks().filter(task => {[m
-[31m-    const deadline = new Date(task.deadline);[m
-[31m-    return deadline >= today && deadline <= threeDaysLater;[m
-[31m-  });[m
-[31m-}[m
-[31m-[m
-[32m+[m[32mconst { getAllTasks, createTask, updateTask } = require('../data/taskRepository');[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32mfunction getTasks() {[m[41m[m
-[32m+[m[32m  return getAllTasks();[m[41m[m
-[32m+[m[32m}[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32mfunction addTask(userId, content, deadline) {[m[41m[m
-[32m+[m[32m  if (!userId) {[m[41m[m
-[32m+[m[32m    throw new Error('userId 是必填欄位');[m[41m[m
-[32m+[m[32m  }[m[41m[m
-[32m+[m[32m  if (!content) {[m[41m[m
-[32m+[m[32m    throw new Error('content 是必填欄位');[m[41m[m
-[32m+[m[32m  }[m[41m[m
-[32m+[m[32m  if (!deadline) {[m[41m[m
-[32m+[m[32m    throw new Error('deadline 是必填欄位');[m[41m[m
-[32m+[m[32m  }[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32m  const createDate = new Date();[m[41m[m
-[32m+[m[32m  const deadlineDate = new Date(deadline);[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32m  if (deadlineDate <= createDate) {[m[41m[m
-[32m+[m[32m    throw new Error('deadline 必須在建立時間之後');[m[41m[m
-[32m+[m[32m  }[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32m  const task = {[m[41m[m
-[32m+[m[32m    id: Date.now().toString(),[m[41m[m
-[32m+[m[32m    userId,[m[41m[m
-[32m+[m[32m    content,[m[41m[m
-[32m+[m[32m    deadline,[m[41m[m
-[32m+[m[32m    createDate: createDate.toISOString(),[m[41m[m
-[32m+[m[32m    done: false,[m[41m[m
-[32m+[m[32m  };[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32m  return createTask(task);[m[41m[m
-[32m+[m[32m}[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32mfunction completeTask(id) {[m[41m[m
-[32m+[m[32m  const result = updateTask(id, { done: true });[m[41m[m
-[32m+[m[32m  if (!result) {[m[41m[m
-[32m+[m[32m    throw new Error('找不到這個 task');[m[41m[m
-[32m+[m[32m  }[m[41m[m
-[32m+[m[32m  return result;[m[41m[m
-[32m+[m[32m}[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32mfunction getUpcomingTasks() {[m[41m[m
-[32m+[m[32m  const today = new Date();[m[41m[m
-[32m+[m[32m  today.setHours(0, 0, 0, 0); // 將時間設為今天的開始[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32m  const threeDaysLater = new Date(today);[m[41m[m
-[32m+[m[32m  threeDaysLater.setDate(today.getDate() + 3); // 設定為三天後[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32m  return getAllTasks().filter(task => {[m[41m[m
-[32m+[m[32m    const deadline = new Date(task.deadline);[m[41m[m
-[32m+[m[32m    return deadline >= today && deadline <= threeDaysLater;[m[41m[m
-[32m+[m[32m  });[m[41m[m
-[32m+[m[32m}[m[41m[m
-[32m+[m[41m[m
- module.exports = { getTasks, addTask, completeTask, getUpcomingTasks };[m
-\ No newline at end of file[m
-[1mdiff --git a/task-service/src/data/taskRepository.js b/task-service/src/data/taskRepository.js[m
-[1mindex 3868fcb..86a3bbd 100644[m
-[1m--- a/task-service/src/data/taskRepository.js[m
-[1m+++ b/task-service/src/data/taskRepository.js[m
-[36m@@ -1,19 +1,19 @@[m
-[31m-const tasks = [];[m
-[31m-[m
-[31m-function getAllTasks() {[m
-[31m-  return tasks;[m
-[31m-}[m
-[31m-[m
-[31m-function createTask(task) {[m
-[31m-  tasks.push(task);[m
-[31m-  return task;[m
-[31m-}[m
-[31m-[m
-[31m-function updateTask(id, updates) {[m
-[31m-  const task = tasks.find(t => t.id === id);[m
-[31m-  if (!task) return null;[m
-[31m-  Object.assign(task, updates);[m
-[31m-  return task;[m
-[31m-}[m
-[31m-[m
-[32m+[m[32mconst tasks = [];[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32mfunction getAllTasks() {[m[41m[m
-[32m+[m[32m  return tasks;[m[41m[m
-[32m+[m[32m}[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32mfunction createTask(task) {[m[41m[m
-[32m+[m[32m  tasks.push(task);[m[41m[m
-[32m+[m[32m  return task;[m[41m[m
-[32m+[m[32m}[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32mfunction updateTask(id, updates) {[m[41m[m
-[32m+[m[32m  const task = tasks.find(t => t.id === id);[m[41m[m
-[32m+[m[32m  if (!task) return null;[m[41m[m
-[32m+[m[32m  Object.assign(task, updates);[m[41m[m
-[32m+[m[32m  return task;[m[41m[m
-[32m+[m[32m}[m[41m[m
-[32m+[m[41m[m
- module.exports = { getAllTasks, createTask, updateTask };[m
-\ No newline at end of file[m
-[1mdiff --git a/task-service/src/presentation/taskRoutes.js b/task-service/src/presentation/taskRoutes.js[m
-[1mindex 5138e83..4f39ba9 100644[m
-[1m--- a/task-service/src/presentation/taskRoutes.js[m
-[1m+++ b/task-service/src/presentation/taskRoutes.js[m
-[36m@@ -1,41 +1,41 @@[m
-[31m-const express = require('express');[m
-[31m-const router = express.Router();[m
-[31m-const { getTasks, addTask, completeTask , getUpcomingTasks } = require('../business/taskService');[m
-[31m-[m
-[31m-router.get('/tasks', (req, res) => {[m
-[31m-  const tasks = getTasks();[m
-[31m-  res.status(200).json(tasks);[m
-[31m-});[m
-[31m-[m
-[31m-router.post('/tasks', (req, res) => {[m
-[31m-  try {[m
-[31m-    const { userId,content, deadline } = req.body;[m
-[31m-    const task = addTask(userId, content, deadline);[m
-[31m-    [m
-[31m-    fetch('http://localhost:3003/notify', {[m
-[31m-      method: 'POST',[m
-[31m-      headers: { 'Content-Type': 'application/json' },[m
-[31m-      body: JSON.stringify({ userId:task.userId, taskId:task.id })[m
-[31m-    }).catch(err => console.error('通知 Notification Service 失敗:', err));[m
-[31m-    [m
-[31m-    res.status(201).json(task);[m
-[31m-  } catch (err) {[m
-[31m-    res.status(400).json({ error: err.message });[m
-[31m-  }[m
-[31m-});[m
-[31m-[m
-[31m-router.put('/tasks/:id', (req, res) => {[m
-[31m-  try {[m
-[31m-    const task = completeTask(req.params.id);[m
-[31m-    res.status(200).json(task);[m
-[31m-  } catch (err) {[m
-[31m-    res.status(400).json({ error: err.message });[m
-[31m-  }[m
-[31m-});[m
-[31m-[m
-[31m-router.get('/tasks/upcoming', (req, res) => {[m
-[31m-  const upcomingTasks = getUpcomingTasks();[m
-[31m-  res.status(200).json(upcomingTasks);[m
-[31m-});[m
-[31m-[m
-[32m+[m[32mconst express = require('express');[m[41m[m
-[32m+[m[32mconst router = express.Router();[m[41m[m
-[32m+[m[32mconst { getTasks, addTask, completeTask , getUpcomingTasks } = require('../business/taskService');[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32mrouter.get('/tasks', (req, res) => {[m[41m[m
-[32m+[m[32m  const tasks = getTasks();[m[41m[m
-[32m+[m[32m  res.status(200).json(tasks);[m[41m[m
-[32m+[m[32m});[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32mrouter.post('/tasks', (req, res) => {[m[41m[m
-[32m+[m[32m  try {[m[41m[m
-[32m+[m[32m    const { userId,content, deadline } = req.body;[m[41m[m
-[32m+[m[32m    const task = addTask(userId, content, deadline);[m[41m[m
-[32m+[m[41m    [m
-[32m+[m[32m    fetch('http://localhost:3003/notify', {[m[41m[m
-[32m+[m[32m      method: 'POST',[m[41m[m
-[32m+[m[32m      headers: { 'Content-Type': 'application/json' },[m[41m[m
-[32m+[m[32m      body: JSON.stringify({ userId:task.userId, taskId:task.id })[m[41m[m
-[32m+[m[32m    }).catch(err => console.error('通知 Notification Service 失敗:', err));[m[41m[m
-[32m+[m[41m    [m
-[32m+[m[32m    res.status(201).json(task);[m[41m[m
-[32m+[m[32m  } catch (err) {[m[41m[m
-[32m+[m[32m    res.status(400).json({ error: err.message });[m[41m[m
-[32m+[m[32m  }[m[41m[m
-[32m+[m[32m});[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32mrouter.put('/tasks/:id', (req, res) => {[m[41m[m
-[32m+[m[32m  try {[m[41m[m
-[32m+[m[32m    const task = completeTask(req.params.id);[m[41m[m
-[32m+[m[32m    res.status(200).json(task);[m[41m[m
-[32m+[m[32m  } catch (err) {[m[41m[m
-[32m+[m[32m    res.status(400).json({ error: err.message });[m[41m[m
-[32m+[m[32m  }[m[41m[m
-[32m+[m[32m});[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32mrouter.get('/tasks/upcoming', (req, res) => {[m[41m[m
-[32m+[m[32m  const upcomingTasks = getUpcomingTasks();[m[41m[m
-[32m+[m[32m  res.status(200).json(upcomingTasks);[m[41m[m
-[32m+[m[32m});[m[41m[m
-[32m+[m[41m[m
- module.exports = router;[m
-\ No newline at end of file[m
-[1mdiff --git a/user-service/index.js b/user-service/index.js[m
-[1mindex 00a74c6..6cea593 100644[m
-[1m--- a/user-service/index.js[m
-[1m+++ b/user-service/index.js[m
-[36m@@ -1,11 +1,11 @@[m
-[31m-const express = require('express');[m
-[31m-const userRoutes = require('./src/presentation/userRoutes');[m
-[31m-[m
-[31m-const app = express();[m
-[31m-app.use(express.json());[m
-[31m-app.use(userRoutes);[m
-[31m-[m
-[31m-const PORT = 3002;[m
-[31m-app.listen(PORT, () => {[m
-[31m-  console.log(`Server running on http://localhost:${PORT}`);[m
-[32m+[m[32mconst express = require('express');[m[41m[m
-[32m+[m[32mconst userRoutes = require('./src/presentation/userRoutes');[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32mconst app = express();[m[41m[m
-[32m+[m[32mapp.use(express.json());[m[41m[m
-[32m+[m[32mapp.use(userRoutes);[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32mconst PORT = 3002;[m[41m[m
-[32m+[m[32mapp.listen(PORT, () => {[m[41m[m
-[32m+[m[32m  console.log(`Server running on http://localhost:${PORT}`);[m[41m[m
- });[m
-\ No newline at end of file[m
-[1mdiff --git a/user-service/src/business/userService.js b/user-service/src/business/userService.js[m
-[1mindex 323a2d2..bf23aa0 100644[m
-[1m--- a/user-service/src/business/userService.js[m
-[1m+++ b/user-service/src/business/userService.js[m
-[36m@@ -1,30 +1,30 @@[m
-[31m-const crypto = require('crypto');[m
-[31m-const { createUser, findUserById } = require('../data/userRepositroy');[m
-[31m-[m
-[31m-function addUser(email){[m
-[31m-    if(!email){[m
-[31m-        throw new Error('email 是必填欄位');[m
-[31m-    }[m
-[31m-    [m
-[31m-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;[m
-[31m-    if (!emailPattern.test(email)) {[m
-[31m-        throw new Error('email 格式不正確');[m
-[31m-    }[m
-[31m-[m
-[31m-    const user = {[m
-[31m-        id: crypto.randomUUID(),[m
-[31m-        email,[m
-[31m-    }[m
-[31m-[m
-[31m-    return createUser(user);[m
-[31m-}[m
-[31m-[m
-[31m-function getUser(id){[m
-[31m-    const user = findUserById(id);[m
-[31m-    if(!user){[m
-[31m-        throw new Error('找不到這個 user');[m
-[31m-    }[m
-[31m-    return user;[m
-[31m-}[m
-[31m-[m
-[32m+[m[32mconst crypto = require('crypto');[m[41m[m
-[32m+[m[32mconst { createUser, findUserById } = require('../data/userRepositroy');[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32mfunction addUser(email){[m[41m[m
-[32m+[m[32m    if(!email){[m[41m[m
-[32m+[m[32m        throw new Error('email 是必填欄位');[m[41m[m
-[32m+[m[32m    }[m[41m[m
-[32m+[m[41m    [m
-[32m+[m[32m    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;[m[41m[m
-[32m+[m[32m    if (!emailPattern.test(email)) {[m[41m[m
-[32m+[m[32m        throw new Error('email 格式不正確');[m[41m[m
-[32m+[m[32m    }[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32m    const user = {[m[41m[m
-[32m+[m[32m        id: crypto.randomUUID(),[m[41m[m
-[32m+[m[32m        email,[m[41m[m
-[32m+[m[32m    }[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32m    return createUser(user);[m[41m[m
-[32m+[m[32m}[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32mfunction getUser(id){[m[41m[m
-[32m+[m[32m    const user = findUserById(id);[m[41m[m
-[32m+[m[32m    if(!user){[m[41m[m
-[32m+[m[32m        throw new Error('找不到這個 user');[m[41m[m
-[32m+[m[32m    }[m[41m[m
-[32m+[m[32m    return user;[m[41m[m
-[32m+[m[32m}[m[41m[m
-[32m+[m[41m[m
- module.exports = { addUser, getUser };[m
-\ No newline at end of file[m
-[1mdiff --git a/user-service/src/data/userRepositroy.js b/user-service/src/data/userRepositroy.js[m
-[1mindex 5e702a9..12bd6cb 100644[m
-[1m--- a/user-service/src/data/userRepositroy.js[m
-[1m+++ b/user-service/src/data/userRepositroy.js[m
-[36m@@ -1,12 +1,12 @@[m
-[31m-const users = [];[m
-[31m-[m
-[31m-function createUser(user) {[m
-[31m-  users.push(user);[m
-[31m-  return user;[m
-[31m-}[m
-[31m-[m
-[31m-function findUserById(id) {[m
-[31m-  return users.find(u => u.id === id);[m
-[31m-}[m
-[31m-[m
-[32m+[m[32mconst users = [];[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32mfunction createUser(user) {[m[41m[m
-[32m+[m[32m  users.push(user);[m[41m[m
-[32m+[m[32m  return user;[m[41m[m
-[32m+[m[32m}[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32mfunction findUserById(id) {[m[41m[m
-[32m+[m[32m  return users.find(u => u.id === id);[m[41m[m
-[32m+[m[32m}[m[41m[m
-[32m+[m[41m[m
- module.exports = { createUser, findUserById };[m
-\ No newline at end of file[m
-[1mdiff --git a/user-service/src/presentation/userRoutes.js b/user-service/src/presentation/userRoutes.js[m
-[1mindex 616af14..ed03c03 100644[m
-[1m--- a/user-service/src/presentation/userRoutes.js[m
-[1m+++ b/user-service/src/presentation/userRoutes.js[m
-[36m@@ -1,24 +1,24 @@[m
-[31m-const express = require('express');[m
-[31m-const router = express.Router();[m
-[31m-const { addUser, getUser } = require('../business/userService');[m
-[31m-[m
-[31m-router.post('/users', (req, res) => {[m
-[31m-  try {[m
-[31m-    const { email } = req.body;[m
-[31m-    const user = addUser(email);[m
-[31m-    res.status(201).json(user);[m
-[31m-  } catch (err) {[m
-[31m-    res.status(400).json({ error: err.message });[m
-[31m-  } [m
-[31m-});[m
-[31m-[m
-[31m-router.get('/users/:id', (req, res) => {[m
-[31m-  try {[m
-[31m-    const user = getUser(req.params.id);[m
-[31m-    res.status(200).json(user);[m
-[31m-  } catch (err) {[m
-[31m-    res.status(404).json({ error: err.message });[m
-[31m-  }[m
-[31m-});[m
-[31m-[m
-[32m+[m[32mconst express = require('express');[m[41m[m
-[32m+[m[32mconst router = express.Router();[m[41m[m
-[32m+[m[32mconst { addUser, getUser } = require('../business/userService');[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32mrouter.post('/users', (req, res) => {[m[41m[m
-[32m+[m[32m  try {[m[41m[m
-[32m+[m[32m    const { email } = req.body;[m[41m[m
-[32m+[m[32m    const user = addUser(email);[m[41m[m
-[32m+[m[32m    res.status(201).json(user);[m[41m[m
-[32m+[m[32m  } catch (err) {[m[41m[m
-[32m+[m[32m    res.status(400).json({ error: err.message });[m[41m[m
-[32m+[m[32m  }[m[41m [m
-[32m+[m[32m});[m[41m[m
-[32m+[m[41m[m
-[32m+[m[32mrouter.get('/users/:id', (req, res) => {[m[41m[m
-[32m+[m[32m  try {[m[41m[m
-[32m+[m[32m    const user = getUser(req.params.id);[m[41m[m
-[32m+[m[32m    res.status(200).json(user);[m[41m[m
-[32m+[m[32m  } catch (err) {[m[41m[m
-[32m+[m[32m    res.status(404).json({ error: err.message });[m[41m[m
-[32m+[m[32m  }[m[41m[m
-[32m+[m[32m});[m[41m[m
-[32m+[m[41m[m
- module.exports = router;[m
-\ No newline at end of file[m
